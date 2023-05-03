@@ -8,6 +8,7 @@ import numpy as np
 ##### Raw duration of time spent with infected neighbors
 ##### One hot encoding of types of activities participated in or weighted with how long they did those
 #####
+# Week states
 
 class GraphStats:
     def __init__(self, va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations) -> None:
@@ -24,6 +25,14 @@ class GraphStats:
     def get_age_sex(self, pid):
         res = self.va_person.loc[self.va_person.loc['pid']==pid]
         return (res['age'],res['sex'])
+    #gets the week up to and including that day ex: 6 = [0,6]
+    def get_week_states(self, pid, day):
+        sts = self.va_disease_outcome_training.query('pid == @pid and day >= @day - 6 and day <= @day')['state'].to_numpy()
+        mapping = {"S": 0, "I": 1, "R": 2}
+        map_func = np.vectorize(mapping.get)
+        return map_func(sts)
+
+
 
     ### gets household members including person
     def household_members(self, pid):
@@ -61,12 +70,12 @@ class GraphStats:
         
         pids = np.concatenate((pid1, pid2))
         pids = pids[pids!=pid]
-        time = 0
+        times = []
         disease_info = self.va_disease_outcome_training.query('pid in @pids and state== "I"')
         for i in range(day-6, day+1):
-            time += self.get_raw_time_with_infected_day(pid, i, interactions, pids, disease_info)
+            times.append(self.get_raw_time_with_infected_day(pid, i, interactions, pids, disease_info))
     
-        return time
+        return np.array(times)
     def get_activity_vector(self, pid):
         user_activities = self.va_activity_loc_assign.query('pid == @pid')
         activity_vector = np.zeros(6)
