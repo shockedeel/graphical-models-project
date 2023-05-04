@@ -23,7 +23,8 @@ class GraphStats:
 
     ##gets age and sex of a specified person
     def get_age_sex(self, pid):
-        res = self.va_person.loc[self.va_person.loc['pid']==pid]
+        print(self.va_person.head())
+        res = self.va_person.query('pid == @pid').iloc[0,:]
         return (res['age'],res['sex'])
     #gets the week up to and including that day ex: 6 = [0,6]
     def get_week_states(self, pid, day):
