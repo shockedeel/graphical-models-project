@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pickle
 
 ##### Locations they been to in past week - and how frequent it is
 ##### Spread stats for last week at said locations
@@ -9,6 +10,15 @@ import numpy as np
 ##### One hot encoding of types of activities participated in or weighted with how long they did those
 #####
 # Week states
+
+def flatten(lst):
+    flat_lst = []
+    for elem in lst:
+        if isinstance(elem, list):
+            flat_lst.extend(flatten(elem))
+        else:
+            flat_lst.append(elem)
+    return flat_lst
 
 class GraphStats:
     def __init__(self, va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations) -> None:
@@ -23,7 +33,6 @@ class GraphStats:
 
     ##gets age and sex of a specified person
     def get_age_sex(self, pid):
-        print(self.va_person.head())
         res = self.va_person.query('pid == @pid').iloc[0,:]
         return (res['age'],res['sex'])
     #gets the week up to and including that day ex: 6 = [0,6]
@@ -32,7 +41,6 @@ class GraphStats:
         mapping = {"S": 0, "I": 1, "R": 2}
         map_func = np.vectorize(mapping.get)
         return map_func(sts)
-
 
 
     ### gets household members including person
@@ -90,3 +98,54 @@ class GraphStats:
         for index, row in user_activities.iterrows():
             location_durations[row['lid']] = location_durations.get(row['lid'], 0) + row['duration']
         return location_durations
+    
+    def get_dataset(self):
+        dataset = []
+        pid_list = self.va_person["pid"].unique()
+        for day in range(6, 56):
+            for pid in pid_list:
+                # print(pid)
+                try:
+                    household_members = list(self.household_members(pid)) # get household members for this person pid, this is a list of pids [pid1, pid2, pid3, etc...]
+                except:
+                    pass
+    
+                age, sex = self.get_age_sex(pid) # get age and sex
+                infected_week_time = list(self.get_raw_time_with_infected_week(pid, day=day))
+                activity_vector = list(self.get_activity_vector(pid).astype(int))
+
+                # if there's no residence set residence_duration = 0
+                # sum up activity durations
+                location_durations = self.get_location_durations(pid)
+                residence_duration = 0
+                activity_duration = 0
+                for location, duration in location_durations.items(): 
+                    if location > 1000000: # residence
+                        residence_duration += duration
+                    else:
+                        activity_duration += duration
+
+                row = [pid, day, age, sex, household_members, infected_week_time, activity_vector, residence_duration, activity_duration]
+                flattened_row = flatten(row)
+                print(flattened_row)
+                dataset.append(flattened_row)
+        return dataset
+
+def main():
+    va_activity_loc_assign = pd.read_csv('va_activity_location_assignment.csv.gz', compression='gzip').iloc[:,1:]
+    va_activity_locations = pd.read_csv('va_activity_locations.csv.gz', compression='gzip').iloc[:,1:]
+    va_disease_outcome_target = pd.read_csv('va_disease_outcome_target.csv.gz', compression='gzip').iloc[:,1:]
+    va_disease_outcome_training = pd.read_csv('va_disease_outcome_training.csv.gz', compression='gzip')
+    va_household = pd.read_csv('va_household.csv.gz', compression = 'gzip').iloc[:,1:]
+    va_person = pd.read_csv('va_person.csv.gz', compression='gzip')
+    va_population_network = pd.read_csv('va_population_network.csv.gz', compression='gzip')
+    va_residence_locations = pd.read_csv('va_residence_locations.csv.gz', compression='gzip').iloc[:,1:]
+    test = GraphStats(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)  
+    # dataset = test.get_dataset()
+
+    # with open('dataset.pkl', 'wb') as f:
+    #     pickle.dump(dataset, f)
+
+
+if __name__ == "__main__":
+    main()
