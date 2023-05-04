@@ -75,8 +75,8 @@ class GraphStats:
         disease_info = self.va_disease_outcome_training.query('pid in @pids and state== "I"')
         for i in range(day-6, day+1):
             times.append(self.get_raw_time_with_infected_day(pid, i, interactions, pids, disease_info))
-    
         return np.array(times)
+
     def get_activity_vector(self, pid):
         user_activities = self.va_activity_loc_assign.query('pid == @pid')
         activity_vector = np.zeros(6)
@@ -90,3 +90,16 @@ class GraphStats:
         for index, row in user_activities.iterrows():
             location_durations[row['lid']] = location_durations.get(row['lid'], 0) + row['duration']
         return location_durations
+
+    def get_location_risk_level(self):
+        location_risk_levels = {}
+        infected = self.va_disease_outcome_training.query('state == "I"')
+        infected = infected.groupby(['pid'])['pid'].count()
+        for pid, days in infected.items():
+            single_durations = self.get_location_durations(pid)
+            for key, value in single_durations.items():
+                if key < 1000000000:
+                    location_risk_levels[key] = location_risk_levels.get(key, 0) + days*value
+        total = sum(location_risk_levels.values())
+        location_risk_levels = {key: value/total for key,value in location_risk_levels.items()}
+        return location_risk_levels
