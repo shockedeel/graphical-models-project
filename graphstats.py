@@ -42,12 +42,16 @@ class GraphStats:
         map_func = np.vectorize(mapping.get)
         return map_func(sts)
 
-
     ### gets household members including person
     def household_members(self, pid):
-        hid = self.va_person.query('pid == @pid')['hid'][0]
+        hid = self.va_person.query('pid == @pid')['hid'].squeeze()
         return self.va_person.query('hid == @hid')['pid'].to_numpy()
-    
+
+        
+    def get_household_size(self, pid):
+        hid = self.va_person.query('pid == @pid')['hid'].squeeze()
+        return self.va_household.query('hid == @hid')['hh_size'].squeeze()
+        
     # how long a person is in contact with a infected people on a given day
     def get_raw_time_with_infected_day(self, pid, day,interactions=None,pids = None, disease_info=None):
         time = 0
@@ -102,32 +106,26 @@ class GraphStats:
     def get_dataset(self):
         dataset = []
         pid_list = self.va_person["pid"].unique()
-        for day in range(6, 56):
-            for pid in pid_list:
-                # print(pid)
-                try:
-                    household_members = list(self.household_members(pid)) # get household members for this person pid, this is a list of pids [pid1, pid2, pid3, etc...]
-                except:
-                    pass
-    
-                age, sex = self.get_age_sex(pid) # get age and sex
+        for pid in pid_list:
+            print(pid)
+            age, sex = self.get_age_sex(pid) # get age and sex
+            household_size = self.get_household_size(pid)    
+            activity_vector = list(self.get_activity_vector(pid).astype(int))
+            # if there's no residence set residence_duration = 0
+            # sum up activity durations
+            location_durations = self.get_location_durations(pid)
+            residence_duration = 0
+            activity_duration = 0
+            for location, duration in location_durations.items(): 
+                if location > 1000000: # residence
+                    residence_duration += duration
+                else:
+                    activity_duration += duration
+            for day in range(0, 57):
                 infected_week_time = list(self.get_raw_time_with_infected_week(pid, day=day))
-                activity_vector = list(self.get_activity_vector(pid).astype(int))
-
-                # if there's no residence set residence_duration = 0
-                # sum up activity durations
-                location_durations = self.get_location_durations(pid)
-                residence_duration = 0
-                activity_duration = 0
-                for location, duration in location_durations.items(): 
-                    if location > 1000000: # residence
-                        residence_duration += duration
-                    else:
-                        activity_duration += duration
-
-                row = [pid, day, age, sex, household_members, infected_week_time, activity_vector, residence_duration, activity_duration]
+                row = [pid, day, age, sex, household_size, activity_vector, residence_duration, activity_duration, infected_week_time]
                 flattened_row = flatten(row)
-                print(flattened_row)
+                # print(f"\t\t{flattened_row}")
                 dataset.append(flattened_row)
         return dataset
 
@@ -143,7 +141,7 @@ def main():
     test = GraphStats(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)  
     # dataset = test.get_dataset()
 
-    # with open('dataset.pkl', 'wb') as f:
+    # with open('final_dataset.pkl', 'wb') as f:
     #     pickle.dump(dataset, f)
 
 
