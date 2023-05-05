@@ -1,0 +1,197 @@
+commit 0025abb94b7af71044128e440b8a8a070fa5d832
+Author: Kolbe Surran <kolbe@deuceslax.com>
+Date:   Thu May 4 14:16:55 2023 -0500
+
+    init commit
+
+diff --git a/main.ipynb b/main.ipynb
+new file mode 100644
+index 0000000..c764ec9
+--- /dev/null
++++ b/main.ipynb
+@@ -0,0 +1,153 @@
++{
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "import pandas as pd\n",
++    "import numpy as np\n",
++    "\n",
++    "\n",
++    "\n",
++    "va_activity_loc_assign = pd.read_csv('va_activity_location_assignment.csv.gz', compression='gzip').iloc[:,1:]\n",
++    "va_activity_locations = pd.read_csv('va_activity_locations.csv.gz', compression='gzip').iloc[:,1:]\n",
++    "va_disease_outcome_target = pd.read_csv('va_disease_outcome_target.csv.gz', compression='gzip').iloc[:,1:]\n",
++    "va_disease_outcome_training = pd.read_csv('va_disease_outcome_training.csv.gz', compression='gzip')\n",
++    "va_household = pd.read_csv('va_household.csv.gz', compression = 'gzip').iloc[:,1:]\n",
++    "va_person = pd.read_csv('va_person.csv.gz', compression='gzip')\n",
++    "va_population_network = pd.read_csv('va_population_network.csv.gz', compression='gzip')\n",
++    "va_residence_locations = pd.read_csv('va_residence_locations.csv.gz', compression='gzip').iloc[:,1:]\n",
++    "# va_residence_locations.head()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "##### Locations they been to in past week - and how frequent it is\n",
++    "##### Spread stats for last week at said locations\n",
++    "##### Age, sex\n",
++    "##### Household number\n",
++    "##### Raw duration of time spent with infected neighbors\n",
++    "##### One hot encoding of types of activities participated in or weighted with how long they did those\n",
++    "#####\n",
++    "\n",
++    "class GraphStats:\n",
++    "    def __init__(self, va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations) -> None:\n",
++    "        self.va_activity_loc_assign = va_activity_loc_assign\n",
++    "        self.va_activity_locations = va_activity_locations\n",
++    "        self.va_disease_outcome_target = va_disease_outcome_target\n",
++    "        self.va_disease_outcome_training = va_disease_outcome_training\n",
++    "        self.va_household = va_household\n",
++    "        self.va_person = va_person\n",
++    "        self.va_population_network = va_population_network\n",
++    "        self.va_residence_locations = va_residence_locations\n",
++    "\n",
++    "    ##gets age and sex of a specified person\n",
++    "    def get_age_sex(self, pid):\n",
++    "        res = self.va_person.loc[self.va_person.loc['pid']==pid]\n",
++    "        return (res['age'],res['sex'])\n",
++    "\n",
++    "    ### gets household members including person\n",
++    "    def household_members(self, pid):\n",
++    "        hid = self.va_person.query('pid == @pid')['hid'][0]\n",
++    "        return self.va_person.query('hid == @hid')['pid'].to_numpy()\n",
++    "    \n",
++    "    \n",
++    "    def get_raw_time_with_infected_day(self, pid, day):\n",
++    "        interactions = self.va_population_network.query('pid1 == @pid or pid2 == @pid')\n",
++    "        pid1 = interactions['pid1'].to_numpy()\n",
++    "        pid2 = interactions['pid2'].to_numpy()\n",
++    "        time = 0\n",
++    "        pids = np.concatenate((pid1, pid2))\n",
++    "        pids = pids[pids!=pid]\n",
++    "        disease_info = self.va_disease_outcome_training.query('pid in @pids and day == @day').query('state == \"I\"')\n",
++    "        #print(\"info: \", disease_info)\n",
++    "        for row in range(disease_info.shape[0]):\n",
++    "            print('row: ', row)\n",
++    "        \n",
++    "        \n",
++    "\n",
++    "        return disease_info.shape[0] !=0\n",
++    "    \n",
++    "    \n",
++    "    def get_one_hot_activity(self, pid):\n",
++    "        \n",
++    "aaajuy\n",
++    "        "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "test = GraphStats(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)  \n",
++    "print(va_person.head())\n",
++    "print(va_person.tail())\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "va_activity_loc_assign.head()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "for val in pd.unique()\n",
++    "    for i in range(0,56):\n",
++    "        print(test.get_raw_tim:e_with_infected_day(480702,i))\n",
++    "va_disease_outcome_training"
++   ]
++  }
++ ],
++ "metadata": {
++  "kernelspec": {
++   "display_name": "Python 3",
++   "language": "python",
++   "name": "python3"
++  },
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.11.3"
++  },
++  "orig_nbformat": 4
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2
++}
+diff --git a/va_activity_location_assignment.csv.gz b/va_activity_location_assignment.csv.gz
+new file mode 100644
+index 0000000..43906a0
+Binary files /dev/null and b/va_activity_location_assignment.csv.gz differ
+diff --git a/va_activity_locations.csv.gz b/va_activity_locations.csv.gz
+new file mode 100644
+index 0000000..9968a08
+Binary files /dev/null and b/va_activity_locations.csv.gz differ
+diff --git a/va_disease_outcome_target.csv.gz b/va_disease_outcome_target.csv.gz
+new file mode 100644
+index 0000000..3401019
+Binary files /dev/null and b/va_disease_outcome_target.csv.gz differ
+diff --git a/va_disease_outcome_training.csv.gz b/va_disease_outcome_training.csv.gz
+new file mode 100644
+index 0000000..fa35b95
+Binary files /dev/null and b/va_disease_outcome_training.csv.gz differ
+diff --git a/va_household.csv.gz b/va_household.csv.gz
+new file mode 100644
+index 0000000..d98a929
+Binary files /dev/null and b/va_household.csv.gz differ
+diff --git a/va_person.csv.gz b/va_person.csv.gz
+new file mode 100644
+index 0000000..41df9da
+Binary files /dev/null and b/va_person.csv.gz differ
+diff --git a/va_population_network.csv.gz b/va_population_network.csv.gz
+new file mode 100644
+index 0000000..a396b32
+Binary files /dev/null and b/va_population_network.csv.gz differ
+diff --git a/va_residence_locations.csv.gz b/va_residence_locations.csv.gz
+new file mode 100644
+index 0000000..c6c0631
+Binary files /dev/null and b/va_residence_locations.csv.gz differ
