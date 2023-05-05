@@ -59,3 +59,13 @@ class PanDataset(torch.utils.data.Dataset):
         return self.data.shape[0]
     def __getitem__(self, idx):
         return torch.tensor(self.data[idx,:]), self.labels[self.pids[idx]][self.days[idx]]
+    
+
+class PanDatasetTest(torch.utils.data.Dataset):
+    def __init__(, days, pids, data, labels):
+        
+        self.labels = labels
+    def __len__(self):
+        return self.data.shape[0]
+    def __getitem__(self, idx):
+        return torch.tensor(self.data[idx,:]), self.labels[]

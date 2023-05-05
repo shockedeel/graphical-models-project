@@ -43,33 +43,80 @@ class PreProcessor:
         return ret
     def pickle_processing(self):
         data = []
-        with open('dataset.pkl', 'rb') as f:
-            data = pickle.load(f)
-        d = []
-        with open('dataset_day56.pkl','rb') as f:
-            d = pickle.load(f)
-        labels = []
+        labels = {}
         with open('train_labels.pkl','rb') as f:
             labels = pickle.load(f)
-        filtered_data = [list(filter(lambda x: x <= 4500000, row)) for row in data]
-        datas = np.array(data)
-        pids = datas[:,0]
-        days = datas[:,1]
-        filtered_data = np.array(filtered_data)[:,1:]
-        d = np.array(d)
-        pids_56 = d[:,0]
-        days_56 = d[:,1]
-        d = d[:,2:]
-        print(d)
-        print(filtered_data)
+        with open('new_dataset.pickle', 'rb') as f:
+            data = pickle.load(f)
+        # d = []
+        for row in range(len(data)):
+            for col in range(len(data[row])):
+                if data[row][col] is None:
+                    data[row][col] = 0
+        ran_pids = np.random.choice(list(labels.keys()), size=300)
+        ran_days = np.random.choice(np.arange(6,57), size=300)
+        nd = []
+        for i in range(len(data)):
+            
+            for z in range(len(ran_pids)):
+                if(data[i][0] == ran_pids[z] and data[i][1] == ran_days[z]):
+                    nd.append(data[i])
+        
+        res = self.va_disease_outcome_training.query('state == "I"')
+        infected_pids = res['pid'].to_numpy()
+        infected_days = res['day'].to_numpy()
+        for i in range(len(data)):
+            for z in range(infected_pids.shape[0]):
+                if(data[i][0] == infected_pids[z] and data[i][1] == infected_days[z]):
+                    nd.append(data[i])
+        balanced_labels = {}
+        for i in range(ran_pids.shape[0]):
+            pid = ran_pids[i]
+            if(pid not in balanced_labels):
+                balanced_labels[pid] = {}
+            balanced_labels[pid][ran_days[i]] = labels[pid][ran_days[i]]
+        for i in range(infected_pids.shape[0]):
+            pid = infected_pids[i]
+            if(pid not in balanced_labels):
+                balanced_labels[pid] = {}
+            balanced_labels[pid][infected_days[i]] = labels[pid][infected_days[i]]
+        balanced_pids = np.concatenate((ran_pids, infected_pids))
+        balanced_days = np.concatenate((ran_days, infected_days))
+        filtered_data = np.array(nd)[:,2:]
+        #print(balanced_labels)
+        #print(filtered_data)
+        #print(infected_pids.shape[0])
+        # with open('dataset_day56.pkl','rb') as f:
+        #     d = pickle.load(f)
+        print(infected_pids.shape[0])
+        
+        #datas = np.array(data)
+        
+        
+        
+        
+        #filtered_data = [list(filter(lambda x: x <= 4500000, row)) for row in data]
 
-        pids_total = np.concatenate((pids,pids_56))
-        days_total = np.concatenate((days, days_56))
-        data_total = np.concatenate((filtered_data, d), axis=0)
-        print(pids_total)
-        print(days_total)
-        print(data_total)
-        return data_total, pids_total, days_total, labels
+        # pids = datas[:,0]
+        # days = datas[:,1]
+        # filtered_data = np.array(filtered_data)[:,1:]
+        
+        
+
+        # d = np.array(d)
+        # pids_56 = d[:,0]
+        # days_56 = d[:,1]
+        # d = d[:,2:]
+        # print(d)
+        # print(filtered_data)
+
+        # pids_total = np.concatenate((pids,pids_56))
+        # days_total = np.concatenate((days, days_56))
+        # data_total = np.concatenate((filtered_data, d), axis=0)
+        # print(pids_total)
+        # print(days_total)
+        # print(data_total)
+        return filtered_data, balanced_pids, balanced_days, balanced_labels
     
     def filtered_data_process(self):
         dataset = []
