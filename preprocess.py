@@ -1,6 +1,17 @@
 import numpy as np
 import pandas as pd
 import pickle
+from graphstats import GraphStats
+
+def flatten(lst):
+    flat_lst = []
+    for elem in lst:
+        if isinstance(elem, list):
+            flat_lst.extend(flatten(elem))
+        else:
+            flat_lst.append(elem)
+    return flat_lst
+
 class PreProcessor:
     def __init__(self, va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations) -> None:
         self.va_activity_loc_assign = va_activity_loc_assign
@@ -11,6 +22,7 @@ class PreProcessor:
         self.va_person = va_person
         self.va_population_network = va_population_network
         self.va_residence_locations = va_residence_locations
+        self.graphstats = GraphStats(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)
     # gets the training labels associated with a specific person should be 50
     def get_training_labels(self, pid):
         outcomes = self.va_disease_outcome_training.query("pid == @pid")
@@ -58,5 +70,36 @@ class PreProcessor:
         print(days_total)
         print(data_total)
         return data_total, pids_total, days_total, labels
+    
+    def filtered_data_process(self):
+        dataset = []
+        pid_list = pd.unique(self.va_disease_outcome_training['pid'])
+        labs = {}
+        for pid in pid_list:
+            age, sex = self.graphstats.get_age_sex(pid)
+            activity_vector = list(self.graphstats.get_activity_vector(pid).astype(int))
+            location_durations = self.graphstats.get_location_durations(pid)
+            residence_duration = 0
+            activity_duration = 0
+            for location, duration in location_durations.items(): 
+                if location > 1000000: # residence
+                    residence_duration += duration
+                else:
+                    activity_duration += duration
+            for day in pd.unique(self.va_disease_outcome_training.query('pid == @pid')['day']):
+                infected_week_time = list(self.graphstats.get_raw_time_with_infected_week(pid, day=day-1))
+                row =  [pid, day-1, age, sex, activity_vector, residence_duration, activity_duration, infected_week_time]
+                flattened_row = flatten(row)
+                dataset.append(flattened_row)
+                if(pid not in labs):
+                    labs[pid] = {}
+                labs[pid][day-1] = 1
+        dataset = np.array(dataset)
+        pids = dataset[:,0]
+        days = dataset[:,1]
+        dataset = dataset[:,2:]
+
+        print(labs)
+        return dataset, pids, days, labs
 
         

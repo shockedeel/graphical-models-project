@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+import networkx as nx
 ##### Locations they been to in past week - and how frequent it is
 ##### Spread stats for last week at said locations
 ##### Age, sex
@@ -20,8 +20,37 @@ class GraphStats:
         self.va_person = va_person
         self.va_population_network = va_population_network
         self.va_residence_locations = va_residence_locations
+        self.G = self.get_networkx_graph()
+        self.degree_centrality = nx.degree_centrality(self.G)
+        self.betweeness = nx.betweenness_centrality(self.G)
+        self.closeness = nx.closeness_centrality(self.G)
+        self.eigen_cent = nx.eigenvector_centrality(self.G)
+    def get_deg_centrality(self, pid):
+        return self.degree_centrality.get(pid)
+    def get_betweeness_centrality(self, pid):
+        return self.betweeness.get(pid)
+    def get_closeness(self, pid):
+        return self.closeness.get(pid)
+    def get_eigen_cent(self, pid):
+        return self.eigen_cent.get(pid)
+    def get_networkx_graph(self):
+        G = nx.Graph()
 
+# Iterate through each row in the DataFrame and add edges to the graph
+        for index, row in self.va_population_network.iterrows():
+            pid1, pid2 = row['pid1'], row['pid2']
+            edge_data = {
+                'lid': row['lid'],
+                'start_time': row['start_time'],
+                'duration': row['duration'],
+                'activity1': row['activity1'],
+                'activity2': row['activity2']
+            }
+            G.add_edge(pid1, pid2, **edge_data)
+        return G
+    
     ##gets age and sex of a specified person
+    
     def get_age_sex(self, pid):
         print(self.va_person.head())
         res = self.va_person.query('pid == @pid').iloc[0,:]

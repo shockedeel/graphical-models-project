@@ -23,6 +23,16 @@ class BClassifier(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.5)
         )
+        self.layer5 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+        self.layer6 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
         
         self.layer4 = nn.Sequential(
             nn.Linear(hidden_size, 1),
@@ -33,6 +43,8 @@ class BClassifier(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.layer5(x)
+        x = self.layer6(x)
         x = self.layer4(x)
         return x
     
