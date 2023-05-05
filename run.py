@@ -4,11 +4,25 @@ from model import BClassifier, PanDataset
 from torchmetrics.classification import BinaryAveragePrecision
 from preprocess import PreProcessor
 from sklearn.metrics import confusion_matrix
+import pandas as pd
 
 def run(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations):
     p = PreProcessor(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)
     data, pids, days, labels = p.pickle_processing()
-   
+    
+    # path = 'C:/Users/kolbe/OneDrive/Desktop/Work/Filtered/bias_outcome/'
+    # va_activity_loc_assignf = pd.read_csv(f'{path}va_activity_location_assignment.csv.gz', compression='gzip').iloc[:,1:]
+    # va_activity_locationsf = pd.read_csv(f'{path}va_activity_locations.csv.gz', compression='gzip').iloc[:,1:]
+    # va_disease_outcome_targetf = pd.read_csv(f'{path}va_disease_outcome_target.csv.gz', compression='gzip').iloc[:,1:]
+    # va_disease_outcome_trainingf = pd.read_csv(f'{path}va_disease_outcome_training.csv.gz', compression='gzip')
+    # va_householdf = pd.read_csv(f'{path}va_household.csv.gz', compression = 'gzip').iloc[:,1:]
+    # va_personf = pd.read_csv(f'{path}va_person.csv.gz', compression='gzip')
+    # va_population_networkf = pd.read_csv(f'{path}va_population_network.csv.gz', compression='gzip')
+    # va_residence_locationsf = pd.read_csv(f'{path}va_residence_locations.csv.gz', compression='gzip').iloc[:,1:]
+    # p = PreProcessor(va_activity_loc_assignf, va_activity_locationsf, va_disease_outcome_targetf, va_disease_outcome_trainingf, va_householdf, va_personf, va_population_networkf, va_residence_locationsf)
+    # data_ub, pids_ub, days_ub, labels_ub = p.filtered_data_process()
+    # ub_dataset = PanDataset(days_ub, pids_ub, data_ub, labels_ub)
+    # ub_dataloader = DataLoader(ub_dataset, batch_size=64, shuffle=False)
     input_shape = data.shape[1]
     model = BClassifier(input_shape, 128)
     metric = BinaryAveragePrecision(thresholds=None)
@@ -17,7 +31,11 @@ def run(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target
     dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
     # Move the model to the selected device
     model.to(device)
+    negative_class_weight = 1.0
+    positive_class_weight = 2.0  # Assign a higher weight to the positive (minority) class
 
+# Create a tensor with the class weights
+    class_weights = torch.tensor([negative_class_weight, positive_class_weight], dtype=torch.float).to(device)
     # Define the loss function and optimizer
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -61,3 +79,7 @@ def run(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target
         
         print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss / len(dataloader):.4f}")
         print("Confusion matrix:\n", cm)
+    
+    
+
+    return model

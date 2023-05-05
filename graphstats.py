@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import networkx as nx
 import pickle
 
 ##### Locations they been to in past week - and how frequent it is
@@ -31,9 +32,41 @@ class GraphStats:
         self.va_population_network = va_population_network
         self.va_residence_locations = va_residence_locations
         self.infected_pids = set(va_disease_outcome_training.query('state == "I"')['pid'].unique())
+        self.location_risks = self.get_location_risk_level()
+        self.G = self.get_networkx_graph()
+
+        self.degree_centrality = nx.degree_centrality(self.G)
+        # self.betweeness = nx.betweenness_centrality(self.G)
+        # self.closeness = nx.closeness_centrality(self.G)
+        self.eigen_cent = nx.eigenvector_centrality(self.G)
+    def get_deg_centrality(self, pid):
+        return self.degree_centrality.get(pid)
+    def get_betweeness_centrality(self, pid):
+        return self.betweeness.get(pid)
+    def get_closeness(self, pid):
+        return self.closeness.get(pid)
+    def get_eigen_cent(self, pid):
+        return self.eigen_cent.get(pid)
+    def get_networkx_graph(self):
+        G = nx.Graph()
 
 
+
+# Iterate through each row in the DataFrame and add edges to the graph
+        for index, row in self.va_population_network.iterrows():
+            pid1, pid2 = row['pid1'], row['pid2']
+            edge_data = {
+                'lid': row['lid'],
+                'start_time': row['start_time'],
+                'duration': row['duration'],
+                'activity1': row['activity1'],
+                'activity2': row['activity2']
+            }
+            G.add_edge(pid1, pid2, **edge_data)
+        return G
+    
     ##gets age and sex of a specified person
+    
     def get_age_sex(self, pid):
         res = self.va_person.query('pid == @pid').iloc[0,:]
         return (res['age'],res['sex'])
@@ -49,7 +82,15 @@ class GraphStats:
         hid = self.va_person.query('pid == @pid')['hid'].squeeze()
         return self.va_person.query('hid == @hid')['pid'].to_numpy()
 
-        
+    def get_person_risk_based_loc(self, pid):
+        locs = self.va_activity_loc_assign.query('pid == @pid')['lid']
+        sum = 0.0
+        for loc in locs:
+            if(loc in self.location_risks):
+                sum += self.location_risks[loc]
+        return sum
+
+
     def get_household_size(self, pid):
         hid = self.va_person.query('pid == @pid')['hid'].squeeze()
         return self.va_household.query('hid == @hid')['hh_size'].squeeze()
@@ -90,12 +131,11 @@ class GraphStats:
         pids = self.get_contacted_people(pid)
         times = []
         disease_info = self.va_disease_outcome_training.query('pid in @pids and state== "I"')
-        num_contact_with_infected = sum(1 for pid in pids if pid in self.infected_pids) 
-        num_contact = pids.size
+        
         for i in range(day-6, day+1):
             times.append(self.get_raw_time_with_infected_day(pid, i, interactions, pids, disease_info))
     
-        return np.array(times), num_contact_with_infected, num_contact
+        return np.array(times)
     
     def get_activity_vector(self, pid):
         user_activities = self.va_activity_loc_assign.query('pid == @pid')
@@ -137,6 +177,13 @@ class GraphStats:
             location_durations = self.get_location_durations(pid)
             residence_duration = 0
             activity_duration = 0
+            location_based_risk = self.get_person_risk_based_loc(pid)
+            eigen_cent_person = self.get_eigen_cent(pid)
+            deg_cent_person = self.get_deg_centrality(pid)
+            contacted = self.get_contacted_people(pid)
+            num_contacted = len(contacted)
+
+            num_infected_contacted = self.get_num_contact_with_infected(pid, contacted)
             for location, duration in location_durations.items(): 
                 if location > 1000000: # residence
                     residence_duration += duration
@@ -144,7 +191,7 @@ class GraphStats:
                     activity_duration += duration
             for day in range(6, 57):
                 infected_week_time = list(self.get_raw_time_with_infected_week(pid, day=day))
-                row = [pid, day, age, sex, household_size, activity_vector, residence_duration, activity_duration, infected_week_time]
+                row = [pid, day, age, sex, household_size, activity_vector, residence_duration, activity_duration, infected_week_time, location_based_risk, num_infected_contacted, num_contacted, eigen_cent_person, deg_cent_person]
                 flattened_row = flatten(row)
                 # print(f"\t\t{flattened_row}")
                 dataset.append(flattened_row)
