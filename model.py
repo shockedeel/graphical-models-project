@@ -35,3 +35,15 @@ class BClassifier(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
         return x
+    
+
+class PanDataset(torch.utils.data.Dataset):
+    def __init__(self, days, pids, data, labels):
+        self.days = days
+        self.pids = pids
+        self.data = data
+        self.labels = labels
+    def __len__(self):
+        return self.data.shape[0]
+    def __getitem__(self, idx):
+        return torch.tensor(self.data[idx,:]), self.labels[self.pids[idx]][self.days[idx]]

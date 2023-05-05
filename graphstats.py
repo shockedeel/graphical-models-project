@@ -86,6 +86,7 @@ class GraphStats:
         return time
     
     def get_raw_time_with_infected_week(self, pid, day):
+        interactions = self.va_population_network.query('pid1 == @pid or pid2 == @pid')
         pids = self.get_contacted_people(pid)
         times = []
         disease_info = self.va_disease_outcome_training.query('pid in @pids and state== "I"')
@@ -109,6 +110,19 @@ class GraphStats:
         for index, row in user_activities.iterrows():
             location_durations[row['lid']] = location_durations.get(row['lid'], 0) + row['duration']
         return location_durations
+    
+    def get_location_risk_level(self):
+        location_risk_levels = {}
+        infected = self.va_disease_outcome_training.query('state == "I"')
+        infected = infected.groupby(['pid'])['pid'].count()
+        for pid, days in infected.items():
+            single_durations = self.get_location_durations(pid)
+            for key, value in single_durations.items():
+                if key < 1000000000:
+                    location_risk_levels[key] = location_risk_levels.get(key, 0) + days*value
+        total = sum(location_risk_levels.values())
+        location_risk_levels = {key: value/total for key,value in location_risk_levels.items()}
+        return location_risk_levels
     
     def get_dataset(self):
         dataset = []
@@ -135,27 +149,3 @@ class GraphStats:
                 # print(f"\t\t{flattened_row}")
                 dataset.append(flattened_row)
         return dataset
-
-def main():
-    va_activity_loc_assign = pd.read_csv('va_activity_location_assignment.csv.gz', compression='gzip').iloc[:,1:]
-    va_activity_locations = pd.read_csv('va_activity_locations.csv.gz', compression='gzip').iloc[:,1:]
-    va_disease_outcome_target = pd.read_csv('va_disease_outcome_target.csv.gz', compression='gzip').iloc[:,1:]
-    va_disease_outcome_training = pd.read_csv('va_disease_outcome_training.csv.gz', compression='gzip')
-    va_household = pd.read_csv('va_household.csv.gz', compression = 'gzip').iloc[:,1:]
-    va_person = pd.read_csv('va_person.csv.gz', compression='gzip')
-    va_population_network = pd.read_csv('va_population_network.csv.gz', compression='gzip')
-    va_residence_locations = pd.read_csv('va_residence_locations.csv.gz', compression='gzip').iloc[:,1:]
-    test = GraphStats(va_activity_loc_assign, va_activity_locations, va_disease_outcome_target, va_disease_outcome_training, va_household, va_person, va_population_network, va_residence_locations)  
-    # dataset = test.get_dataset()
-    pid = 4545426
-    contacted_pids = test.get_contacted_people(pid)
-    num_contact = contacted_pids.size
-    num_contact_with_infected = test.get_num_contact_with_infected(pid, contacted_pids)
-    print(num_contact)
-    print(num_contact_with_infected)
-    # with open('final_dataset.pkl', 'wb') as f:
-    #     pickle.dump(dataset, f)
-
-
-if __name__ == "__main__":
-    main()
